@@ -144,8 +144,8 @@ BATCH_PROCESSING = [
                 html.Div(
                 dbc.Modal(
                     [
-                        dbc.ModalHeader(dbc.ModalTitle("Incorrect Filetype")),
-                        dbc.ModalBody("Please upload an excel file (.xls or .xlsx)."),
+                        dbc.ModalHeader(dbc.ModalTitle("Unable to read SMILES")),
+                        dbc.ModalBody("Check if SMILES column correct. Make sure the Excel sheet has no extraneous rows."),
                         dbc.ModalFooter(
                             dbc.Button("Close", id="close", className="ms-auto", n_clicks=0)
                         ),
@@ -177,17 +177,11 @@ app.layout = html.Div(children=[NAVBAR, BODY])
 # Callback for batch processing, excel check
 @app.callback(
     Output('name-of-file', 'children'),
-    Output('modal', 'is_open'),
+    Output('upload-data', 'style'),
     Input('upload-data', 'filename'),
-    Input('close', 'n_clicks'),
-    State('modal', 'is_open')
 )
-def read_excel(filename, close_modal, modal_state):
+def read_excel(filename):
     """Reads the excel file and makes sure that it can read the contents"""
-
-    # Closing modal if we need
-    if close_modal > 0 and modal_state == True:
-        return "", False
 
     # Prevents app from updating if no file
     if filename is None:
@@ -196,9 +190,26 @@ def read_excel(filename, close_modal, modal_state):
     # Deciding if the filetype is okay
     re_object = re.search('\.xls', filename)
     if re_object is not None:
-        return filename, False
+        return filename, {
+                    'height': '60px',
+                    'lineHeight': '60px',
+                    'borderWidth': '1px',
+                    'borderStyle': 'dashed',
+                    'borderRadius': '5px',
+                    'textAlign': 'center',
+                    'margin': '10px'
+                }
     else:
-        return "", True
+        return "", {
+                    'height': '60px',
+                    'lineHeight': '60px',
+                    'borderWidth': '1px',
+                    'borderStyle': 'dashed',
+                    'borderRadius': '5px',
+                    'borderColor': 'red',
+                    'textAlign': 'center',
+                    'margin': '10px'
+                }
 
 
 # Callback for batch processing, data output
@@ -207,13 +218,20 @@ def read_excel(filename, close_modal, modal_state):
     Output('dt1', 'columns'),
     Output('smiles-column', 'style'),
     Output('spinner', 'children'),
+    Output('modal', 'is_open'),
     Input('classify', 'n_clicks'),
+    Input('close', 'n_clicks'),
     State('upload-data', 'contents'),
     State('upload-data', 'filename'),
-    State('smiles-column', 'value')
+    State('smiles-column', 'value'),
+    State('modal', 'is_open')
 )
-def convert_smiles(n, contents, filename, smiles_column):
+def convert_smiles(n, close_modal, contents, filename, smiles_column, modal_state):
     """Takes the excel sheet and converts the smiles into classifications"""
+    
+    # Closing modal if we need
+    if close_modal > 0 and modal_state == True:
+        return [], [], {'margin-left': '8px', 'border-color': 'red'}, "", False
 
     # Prevents app from updating if no file
     if filename is None:
@@ -221,12 +239,11 @@ def convert_smiles(n, contents, filename, smiles_column):
 
     # Catches if there is no smiles column entered
     re_object = re.search('\.xls', filename)
-    if smiles_column == 0 or smiles_column is None and re_object is not None:
-        return "", "", {'margin-left': '8px', 'border-color': 'red'}, ""
+    if smiles_column < 1 or smiles_column is None and re_object is not None:
+        return [], [], {'margin-left': '8px', 'border-color': 'red'}, "", False
 
     elif n and re_object is not None:
-        # check if xlsx
-        re_object_xlsx = re.search('\.xlsx', filename)
+        smiles_column -= 1 # making it more human
 
         # Get the file
         content_type, content_string = contents.split(',')
@@ -235,11 +252,14 @@ def convert_smiles(n, contents, filename, smiles_column):
 
         # Put the smiles into the api
         export_df = pd.DataFrame() # empty datafram to fill
-        smiles_column += 1
         for index, row in df.iterrows():
-            smiles_string = str(row[smiles_column]) #TODO: FINISH THIS
-            classification_dict = _process_full_classification(smiles_string)
+            smiles_string = str(row[smiles_column])
 
+            try:
+                classification_dict = _process_full_classification(smiles_string)
+            except:
+                return [], [], {'margin-left': '8px', 'border-color': 'red'}, "", True
+                
             # If statenent putting blank spaces if no results come up
             if classification_dict['pathway_results'] == []:
                 classification_dict['pathway_results'] = ['']
@@ -271,7 +291,8 @@ def convert_smiles(n, contents, filename, smiles_column):
                         {"name": "Glycoside", "id": "Glycoside"}
                     ], 
                     {'margin-left': '8px'}, 
-                    ""
+                    "",
+                    False
                 ]
     
     else:
