@@ -13,6 +13,9 @@ git clone https://github.com/GrantMcConachie/NPClassifer_local.git
 cd NPClassifier_local
 
 # unzip zipped folders
+python -m venv venv
+cd venv/Scripts
+activate
 
 # install libraries
 pip install -r requirements.txt
