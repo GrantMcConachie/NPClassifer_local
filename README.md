@@ -7,7 +7,7 @@ This neural network is not as wholistic at the actual NPclassifier neural networ
 ## Instructions
 ```shell
 # clone
-git clone https://github.com/grantmcc98/NPClassifer_local.git
+git clone https://github.com/GrantMcConachie/NPClassifer_local.git
 
 # cd to directory
 cd NPClassifier_local
